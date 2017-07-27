@@ -1,12 +1,21 @@
 <?php
-
-/*
-todo:
- - public bytestream: each char will "answer" each successive request for input (,) to allow running without CLI mode
-*/
-
-
-
+/**
+ * BrainFuckInterpreter
+ *
+ * Yet another interpreter to run Brainfuck applications, this time, in PHP.
+ *
+ * PHP Version 7.0 (conventions used make this not portable to 5. You should upgrade anyway.)
+ *
+ * LICENSE: MIT
+ *
+ * @package BrainFuckInterpreter
+ * @author Robert Lerner
+ * @copyright 2017 Robert Lerner, All Rights Reserved
+ * @license https://opensource.org/licenses/MIT
+ * @version 0.0.2
+ * @link https://github.com/rlerner/IRCToolKit
+ * @see http://semver.org/
+ */
 class BrainFuckInterpreter {
 
 	/**
@@ -174,7 +183,7 @@ class BrainFuckInterpreter {
 	 * @param string $str
 	 * @param string $braces
 	*/
-	private function findBraceSets($str, $braces = "[]") { 
+	private function findBraceSets(string $str, string $braces="[]") { 
 		$stack = $result = []; 
 		$pos = -1; 
 		$end = strlen($str) + 1; 
@@ -216,7 +225,7 @@ class BrainFuckInterpreter {
 
 		// Debugging Information
 		if ($this->outputDebug) {
-			// TODO: This only shows the first 30 cells.
+			// This debugger only shows the first 30 cells if they're initialized. If you need to see more, adjust it.
 			for ($i=0;$i<30;$i++) {
 				if (isset($this->cells[$i])) {
 					echo $this->cells[$i] . ".";
@@ -235,11 +244,9 @@ class BrainFuckInterpreter {
 				$this->pointer--;
 				break;
 			case "+":
-				//$this->setCell($this->pointer,$this->cells[$this->pointer]+1);
 				$this->setCell($this->pointer,$this->getCell($this->pointer)+1);
 				break;
 			case "-":
-				//$this->setCell($this->pointer,$this->cells[$this->pointer]-1);
 				$this->setCell($this->pointer,$this->getCell($this->pointer)-1);
 				break;
 			case ".":
@@ -295,3 +302,8 @@ class BrainFuckInterpreter {
 		}
 	}
 }
+ 
+/*
+todo:
+ - public bytestream: each char will "answer" each successive request for input (,) to allow running without CLI mode
+*/
