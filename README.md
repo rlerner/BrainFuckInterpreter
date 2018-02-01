@@ -32,7 +32,8 @@ This is where the magic happens. The good 'ol object.
 | pointer | Int | Private | Points to current memory cell |
 | programCounter | Int | Private | Points to the current instruction of the program |
 | braceSets | array | Private | Used internally to maintain bracket relationship information |
-| memoryProvisioned | Bool | Private | Indiates if memory has been provisioned |
+| byteStream | array | Public | Each element will be a seperate value, allowing running of programs that require input without CLI |
+| byteStreamPointer | int | Private | Current element in byteStream |
 
 
 | Method | Properties | Returns | Visibility | Usage |
