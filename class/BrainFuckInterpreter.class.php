@@ -10,11 +10,12 @@
  *
  * @package BrainFuckInterpreter
  * @author Robert Lerner
- * @copyright 2017 Robert Lerner, All Rights Reserved
+ * @copyright 2017-2018 Robert Lerner, All Rights Reserved
+ * @see https://robert-lerner.com To make me happy.
  * @license https://opensource.org/licenses/MIT
- * @version 0.0.2
- * @link https://github.com/rlerner/IRCToolKit
- * @see http://semver.org/
+ * @version 1.0.0
+ * @link https://github.com/rlerner/BrainFuckInterpreter
+ * @see http://semver.org/ For what the version means
  */
 class BrainFuckInterpreter {
 
@@ -47,6 +48,17 @@ class BrainFuckInterpreter {
 	 * @var boolean
 	 */
 	public $memoryAutoScaling = false;
+
+	/**
+	 * When programs require an input, the program will use CLI functions to ask the user for that input, unless a valid
+	 * byte is present in this stream. Each array value is a different value.
+	 */
+	public $byteStream = [];
+
+	/**
+	 * Current location of the array pointer used in byteStream.
+	 */
+	private $byteStreamPointer = 0;
 
 	/**
 	 * Counts cycles (steps) processed through the program, primarily for optimization, debugging, or infinite loop protection.
@@ -85,14 +97,6 @@ class BrainFuckInterpreter {
 	private $braceSets = [];
 
 	/**
-	 * Indicates whether or not memory has been provisioned TODO: Needed?
-	 * @var boolean
-	 */
-	private $memoryProvisioned = false;
-
-
-
-	/**
 	 * Stores value in cell. Function controls auto-boundary scaling, out-of-bound exceptions, memory manipulation, and value wrapping.
 	 * @param integer $cell
 	 * @param integer $value
@@ -101,14 +105,13 @@ class BrainFuckInterpreter {
 
 		if (!$this->memoryAutoScaling) {
 			if ($cell<0 || $cell>count($this->cells)-1) {
-				throw new Exception("Cell manipulation out of bounds, trying to write to cell $cell, provisioned cells: 0-" . (count($this->cells)-1));
+				throw new \Exception("Cell manipulation out of bounds, trying to write to cell $cell, provisioned cells: 0-" . (count($this->cells)-1));
 			}
 		} else {
 			if (!isset($this->cells[$cell])) {
 				$this->cells[$cell] = 0;
 			}
 		}
-
 		if ($value>$this->cellMaxValue) {
 			$value = 0;
 		}
@@ -120,10 +123,13 @@ class BrainFuckInterpreter {
 	}
 
 	/**
-	 * Retrieves values from memory cells. Function controls auto-boundary scaling. TODO: Exception on out-of-bounds and non-autoscaled memory reads
+	 * Retrieves values from memory cells. Function controls auto-boundary scaling.
 	 * @param integer $cell
 	 */
 	private function getCell(int $cell): int {
+		if (!$this->memoryAutoScaling && !isset($this->cells[$cell])) {
+			throw new \Exception("Out-Of-Bounds Error: Memory Cell $cell does not exist.");
+		}
 		if ($this->memoryAutoScaling && !isset($this->cells[$cell])) {
 			$this->cells[$cell] = 0;
 		}
@@ -136,9 +142,8 @@ class BrainFuckInterpreter {
 	 */
 	public function provisionMemory(int $cellCount): bool {
 		if ($cellCount<1) {
-			throw new Exception("Attempting to provision an invalid quantity of cells, trying to provision '$cellCount'");
+			throw new \Exception("Attempting to provision an invalid quantity of cells, trying to provision '$cellCount'");
 		}
-		$this->memoryProvisioned = true;
 		for ($i=0;$i<$cellCount;$i++) {
 			$this->cells[$i] = 0;
 		}
@@ -167,9 +172,11 @@ class BrainFuckInterpreter {
 	 * @param string $program
 	*/
 	public function loadProgram(string $program): bool {
-		// Sanity check to prevent running a program in a browser that reads STDIN.
+		// Sanity check to prevent running a program in a browser that reads STDIN, unless we're CLI or byteStream is provided.
 		if (strstr(",",$program)!==false && PHP_SAPI!="cli") {
-			throw new Exception("This BF program requires user input, which can only be provided in a CLI instance.");
+			if (count($this->byteStream)<1) {
+				throw new \Exception("This BF program requires user input, which can only be provided in a CLI instance, or with the :: byteStream property.");
+			}
 		}
 
 		$this->programCounter = 0;
@@ -183,38 +190,38 @@ class BrainFuckInterpreter {
 	 * @param string $str
 	 * @param string $braces
 	*/
-	private function findBraceSets(string $str, string $braces="[]") { 
-		$stack = $result = []; 
-		$pos = -1; 
-		$end = strlen($str) + 1; 
+	private function findBraceSets(string $str, string $braces="[]") {
+		$stack = $result = [];
+		$pos = -1;
+		$end = strlen($str) + 1;
 
-		while (true) { 
-			$p1 = strpos($str, $braces{0}, $pos + 1); 
-			$p2 = strpos($str, $braces{1}, $pos + 1); 
-			$pos = min( 
-				($p1 === false) ? $end : $p1, 
-				($p2 === false) ? $end : $p2); 
+		while (true) {
+			$p1 = strpos($str, $braces{0}, $pos + 1);
+			$p2 = strpos($str, $braces{1}, $pos + 1);
+			$pos = min(
+				($p1 === false) ? $end : $p1,
+				($p2 === false) ? $end : $p2);
 			if ($pos == $end) {
 				break;
 			}
 			if ($str{$pos} == $braces{0}) {
-				array_push($stack, $pos); 
+				array_push($stack, $pos);
 			} else {
-				if ($str{$pos} == $braces{1}) { 
+				if ($str{$pos} == $braces{1}) {
 					if (!count($stack)) {
-						throw new Exception("Closing Bracket Mismatch at Offset $pos");
+						throw new \Exception("Closing Bracket Mismatch at Offset $pos");
 					} else {
-						$result[array_pop($stack)] = $pos; 
+						$result[array_pop($stack)] = $pos;
 					}
 				}
-			} 
-		}; 
+			}
+		};
 		if (count($stack)) {
-			throw new Exception("Opening Bracket Mismatch at Offset ".array_pop($stack));
+			throw new \Exception("Opening Bracket Mismatch at Offset ".array_pop($stack));
 		}
-		ksort($result); 
-		return $result; 
-	} 
+		ksort($result);
+		return $result;
+	}
 
 	/**
 	 * Executes the next instruction at ::programCounter in the ::program.
@@ -255,10 +262,16 @@ class BrainFuckInterpreter {
 			case ",":
 				$input=null;
 				while (!is_numeric($input)) {
-					echo "BFINPUT< ";
-					$input = rtrim(fgets(STDIN,1024));
+					// Gets keyboard input from byteStream, or from actual keyboard if it doesn't exist.
+					if (isset($this->byteStream[$this->byteStreamPointer])) {
+						$input = $this->byteStream[$this->byteStreamPointer];
+						$this->byteStreamPointer++;
+					} else {
+						echo "BFINPUT< ";
+						$input = rtrim(fgets(STDIN,1024));
+						echo "\n";
+					}
 				}
-				echo "\n";
 				$this->setCell($this->pointer,$input);
 				break;
 			case "[":
@@ -278,10 +291,8 @@ class BrainFuckInterpreter {
 				return false;
 				break;
 		}
-
 		$this->programCounter++;
 		return true;
-
 	}
 
 	/**
@@ -292,18 +303,13 @@ class BrainFuckInterpreter {
 			$this->cycleCounter++;
 			if ($this->limitCycles>0) {
 				if ($this->cycleCounter>=$this->limitCycles) {
-					die(number_format($this->limitCycles) . " cycles ran, limiter hit.");
+					throw new \Exception("Cycle Limiter Hit, Program Terminated at " . number_format($this->limitCycles) . " cycles.");
 				}
-			} 
+			}
 			$ret = $this->step();
 			if ($ret==false) {
-				die("BFOUTPUT> " . $this->output);
+				return true;
 			}
 		}
 	}
 }
- 
-/*
-todo:
- - public bytestream: each char will "answer" each successive request for input (,) to allow running without CLI mode
-*/
